@@ -1,0 +1,12 @@
+{
+	"folders": [
+		{
+			"path": "Wrist Sensor"
+		},
+		{
+			"name": "Chest Sensor",
+			"path": "Chest Sensor"
+		}
+	],
+	"settings": {}
+}
