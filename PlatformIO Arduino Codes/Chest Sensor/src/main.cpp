@@ -14,7 +14,7 @@
 // Put variable declaration here
 float VBat; // Voltage of battery
 int32_t mic; 
-float intmic; 
+int32_t intmic; 
 
 extern PDMClass PDM;
 short PDMsampleBuffer[256];  // buffer to read PDMsamples into, each sample is 16-bits
@@ -100,8 +100,11 @@ void loop() {
     float PotDiff = getPotDiffWheat();
 
     // Get internal noise data
-    intmic = getElectretWave();
-
+    int32_t ElectretData = getElectretWave();
+    if (ElectretData < 30) // filter noises too loud to be internal sounds
+    {
+      intmic = ElectretData;
+    }
     // Print data
     Serial.print(">");
 
@@ -115,7 +118,8 @@ void loop() {
 
     Serial.print("Jerk:");
     Serial.print(acceleration);
-    // Serial.print(" m/s²,");
+    Serial.print(",");
+    // Serial.print(" m/s²");
 
     Serial.print("Breathe:");
     Serial.print(PotDiff);
