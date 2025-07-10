@@ -4,6 +4,10 @@
 #include <Adafruit_NeoPixel.h> // Neopixel LED library
 #include "MAX30105.h" // MAX30105 or MAx30102 library
 #include "spo2_algorithm.h" //SpO2 Sensor library
+#include <bluefruit.h> //BLE nRF library
+#include <Adafruit_LittleFS.h>
+#include <InternalFileSystem.h>
+
 
 #define VBATPIN A6 // Battery voltage analog pin
 #define NEOPIXELPIN 8 // Neopixel control pin
@@ -16,6 +20,9 @@ float VBat;
 
 //Initialise MAX30102 SpO2 Sensor
 MAX30105 particleSensor;
+
+// Create a BLE UART service
+BLEUart bleuart;
 
 #if defined(__AVR_ATmega328P__) || defined(__AVR_ATmega168__)
 //Arduino Uno doesn't have enough SRAM to store 100 samples of IR led data and red led data in 32-bit format
@@ -33,10 +40,16 @@ int8_t validSPO2; //indicator to show if the SPO2 calculation is valid
 int32_t heartRate; //heart rate value
 int8_t validHeartRate; //indicator to show if the heart rate calculation is valid
 
+// heart rate data
+const byte RATE_SIZE = 10; //Increase this for more averaging. 4 is good.
+byte rates[RATE_SIZE]; //Array of heart rates
+byte rateSpot = 0;
+long lastBeat = 0; //Time at which the last beat occurred
+int beatAvg;
+
 // Put function declaration here
 float getBattVoltage(int x);
 void VBatIndicator();
-void FillSensorBuffer();
 void FillSensorBuffer(int32_t samplesize);
 
 // Initialize NeoPixel
@@ -72,14 +85,24 @@ void setup() {
   // Initialize MAX30102
   particleSensor.begin(Wire, I2C_SPEED_FAST);
 
-  byte ledBrightness = 0x7F; //Options: 0=Off to 255=50mA
-  byte sampleAverage = 4; //Options: 1, 2, 4, 8, 16, 32
+  byte ledBrightness = 60; //Options: 0=Off to 255=50mA
+  byte sampleAverage = 8; //Options: 1, 2, 4, 8, 16, 32
   byte ledMode = 2; //Options: 1 = Red only, 2 = Red + IR, 3 = Red + IR + Green
   int sampleRate = 400; //Options: 50, 100, 200, 400, 800, 1000, 1600, 3200
   int pulseWidth = 411; //Options: 69, 118, 215, 411
   int adcRange = 16384; //Options: 2048, 4096, 8192, 16384
 
   particleSensor.setup(ledBrightness, sampleAverage, ledMode, sampleRate, pulseWidth, adcRange); //Configure sensor with these settings
+
+  //Initialize BLE
+  Bluefruit.begin();
+  Bluefruit.setName("AsthmaAlly-Wrist");
+  bleuart.begin();
+
+  //Start Advertising
+  Bluefruit.Advertising.addName();
+  Bluefruit.Advertising.addService(bleuart);
+  Bluefruit.Advertising.start();
 }
 
 void loop() {
@@ -102,20 +125,35 @@ void loop() {
     //calculate heart rate and SpO2 after 100 samples loaded into buffer
     maxim_heart_rate_and_oxygen_saturation(irBuffer, bufferLength, redBuffer, &spo2, &validSPO2, &heartRate, &validHeartRate);
 
+    if (heartRate < 180 && heartRate > 40)
+    {
+      rates[rateSpot++] = (byte)heartRate; //Store this reading in the array
+      rateSpot %= RATE_SIZE; //Wrap variable
+
+      //Take average of readings
+      beatAvg = 0;
+      for (byte x = 0 ; x < RATE_SIZE ; x++)
+        beatAvg += rates[x];
+      beatAvg /= RATE_SIZE;
+    }   
+
+    // Prepare the data string to send
+    String dataString = ">";
+    
     if (validHeartRate == 1 && particleSensor.getIR() > 5000) {
-      Serial.print(heartRate);
-      Serial.print(" BPM; ");
-    } else{
-      Serial.print(validHeartRate);
-      Serial.print(" BPM; ");
+      dataString += "Heart:" + String(beatAvg) + ", ";
     }
 
     if (validSPO2 == 1 && particleSensor.getIR() > 5000) {
-      Serial.print(spo2);
-      Serial.println("%; ");
-    } else{
-      Serial.print(validSPO2);
-      Serial.println("%; ");      
+      dataString += "SpO2:" + String(spo2) + ", ";
+    }
+
+    // Send data via Serial Monitor
+    Serial.println(dataString);
+
+    // Send data via BLE UART if connected
+    if (bleuart.notifyEnabled()) {
+      bleuart.println(dataString);
     }
 
     if (validSPO2 == 1 && spo2 < 92 && particleSensor.getIR() > 5000) {
@@ -123,7 +161,6 @@ void loop() {
     } else {
         digitalWrite(INBUILTLED_PIN, LOW);   // Turn off LED if SpO2 is normal
     }
-    delay(10);
 }
 
 // put function definitions here
@@ -158,6 +195,7 @@ void FillSensorBuffer(int32_t samplesize) {
         irBuffer[i] = particleSensor.getIR();
         
         particleSensor.nextSample();
+        
         if (i == 0) {
           Serial.print("Progress Bar: [");
         }

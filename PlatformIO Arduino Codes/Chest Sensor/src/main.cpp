@@ -3,6 +3,9 @@
 #include "Adafruit_TinyUSB.h" 
 #include <PDM.h>
 #include <Adafruit_LSM6DS33.h>
+#include <bluefruit.h> //BLE nRF library
+#include <Adafruit_LittleFS.h>
+#include <InternalFileSystem.h>
 
 #define VBATPIN A6 // Battery voltage analog pin
 #define NEOPIXELPIN 8 // Neopixel control pin
@@ -38,6 +41,9 @@ void onPDMdata();
 
 // Initialize NeoPixel
 Adafruit_NeoPixel pixel = Adafruit_NeoPixel(NUMPIXELS, NEOPIXELPIN, NEO_GRB + NEO_KHZ800);
+
+// Create a BLE UART service
+BLEUart bleuart;
 
 void setup() {
     // Put your code here to run once at setup
@@ -80,6 +86,16 @@ void setup() {
     // Start sound sensor
     PDM.onReceive(onPDMdata);
     PDM.begin(1, 16000);
+
+    //Initialize BLE
+    Bluefruit.begin();
+    Bluefruit.setName("AsthmaAlly-Chest");
+    bleuart.begin();
+
+    //Start Advertising
+    Bluefruit.Advertising.addName();
+    Bluefruit.Advertising.addService(bleuart);
+    Bluefruit.Advertising.start();
 }
 
 void loop() {
@@ -105,26 +121,22 @@ void loop() {
     {
       intmic = ElectretData;
     }
-    // Print data
-    Serial.print(">");
 
-    Serial.print("Noise:");
-    Serial.print(mic);
-    Serial.print(",");
+    // Prepare the data string to send
+    String dataString = ">";
 
-    Serial.print("Internal:");
-    Serial.print(intmic);
-    Serial.print(",");
+    dataString += "Noise:" + String(mic) + ", ";
+    dataString += "Internal:" + String(intmic) + ", ";
+    dataString += "Jerk:" + String(acceleration) + ", ";
+    dataString += "Breath" + String(PotDiff) + ", ";
 
-    Serial.print("Jerk:");
-    Serial.print(acceleration);
-    Serial.print(",");
-    // Serial.print(" m/s²");
+    // Send data via Serial Monitor
+    Serial.println(dataString);
 
-    Serial.print("Breathe:");
-    Serial.print(PotDiff);
-    //Serial.println("V");
-    Serial.println();
+    // Send data via BLE UART if connected
+    if (bleuart.notifyEnabled()) {
+      bleuart.println(dataString);
+    }
 }
 
 // Put your function definitions here
@@ -160,10 +172,11 @@ int32_t getPDMwave(int32_t samples) {
 
     // Only return RMS if we have significant signal
     int32_t peak_to_peak = max_amplitude - min_amplitude;
-    if (peak_to_peak > AMPLITUDE_THRESHOLD * 2) {
-        return (count > 0) ? sqrt(sum / count) : 0;
-    }
-    return 0;  // Return 0 if signal is too weak
+    return peak_to_peak;
+    // if (peak_to_peak > AMPLITUDE_THRESHOLD * 2) {
+    //     return (count > 0) ? sqrt(sum / count) : 0;
+    // }
+    // return 0;  // Return 0 if signal is too weak
 }
 
 void onPDMdata() { // initialise PDM data reading
