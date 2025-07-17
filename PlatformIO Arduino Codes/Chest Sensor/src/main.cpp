@@ -125,17 +125,18 @@ void loop() {
     // Prepare the data string to send
     String dataString = ">";
 
-    dataString += "Noise:" + String(mic) + ", ";
-    dataString += "Internal:" + String(intmic) + ", ";
-    dataString += "Jerk:" + String(acceleration) + ", ";
-    dataString += "Breath" + String(PotDiff) + ", ";
+    dataString += String(mic) + ", ";
+    dataString += String(intmic) + ", ";
+    dataString += String(acceleration) + ", ";
+    dataString += String(PotDiff) + ", ";
 
     // Send data via Serial Monitor
     Serial.println(dataString);
 
     // Send data via BLE UART if connected
     if (bleuart.notifyEnabled()) {
-      bleuart.println(dataString);
+      bleuart.print(dataString);
+      bleuart.println();
     }
 }
 
