@@ -7,6 +7,7 @@
 #include <bluefruit.h> //BLE nRF library
 #include <Adafruit_LittleFS.h>
 #include <InternalFileSystem.h>
+#include <DFRobot_MICS.h> // Gas Sensor library
 
 
 #define VBATPIN A6 // Battery voltage analog pin
@@ -85,9 +86,9 @@ void setup() {
   // Initialize MAX30102
   particleSensor.begin(Wire, I2C_SPEED_FAST);
 
-  byte ledBrightness = 60; //Options: 0=Off to 255=50mA
+  byte ledBrightness = 20; //Options: 0=Off to 255=50mA
   byte sampleAverage = 8; //Options: 1, 2, 4, 8, 16, 32
-  byte ledMode = 2; //Options: 1 = Red only, 2 = Red + IR, 3 = Red + IR + Green
+  byte ledMode = 3; //Options: 1 = Red only, 2 = Red + IR, 3 = Red + IR + Green
   int sampleRate = 400; //Options: 50, 100, 200, 400, 800, 1000, 1600, 3200
   int pulseWidth = 411; //Options: 69, 118, 215, 411
   int adcRange = 16384; //Options: 2048, 4096, 8192, 16384
@@ -103,6 +104,7 @@ void setup() {
   Bluefruit.Advertising.addName();
   Bluefruit.Advertising.addService(bleuart);
   Bluefruit.Advertising.start();
+  Bluefruit.configPrphBandwidth(BANDWIDTH_MAX); // Request larger MTU size
 }
 
 void loop() {

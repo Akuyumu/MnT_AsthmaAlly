@@ -35,6 +35,7 @@ void VBatIndicator();
 float getFilteredAcceleration();
 float getPotDiffWheat();
 int32_t getElectretWave();
+void sendBLEData(const String& dataString);
 
 int32_t getPDMwave(int32_t samples);
 void onPDMdata();
@@ -90,12 +91,22 @@ void setup() {
     //Initialize BLE
     Bluefruit.begin();
     Bluefruit.setName("AsthmaAlly-Chest");
+    Bluefruit.setTxPower(-4);    // Increase power for better range, adjust as needed
+
+    // Configure BLE UART service
+    bleuart.setPermission(SECMODE_OPEN, SECMODE_OPEN);
     bleuart.begin();
 
-    //Start Advertising
+    // Start Advertising
+    Bluefruit.Advertising.addFlags(BLE_GAP_ADV_FLAGS_LE_ONLY_GENERAL_DISC_MODE);
     Bluefruit.Advertising.addName();
     Bluefruit.Advertising.addService(bleuart);
-    Bluefruit.Advertising.start();
+
+// Set advertising parameters
+    Bluefruit.Advertising.restartOnDisconnect(true);
+    Bluefruit.Advertising.setInterval(32, 244);    // in unit of 0.625 ms
+    Bluefruit.Advertising.setFastTimeout(30);      // number of seconds in fast mode
+    Bluefruit.Advertising.start();                // 0 = Don't stop advertising after n seconds
 }
 
 void loop() {
@@ -114,6 +125,7 @@ void loop() {
 
     // Compute potential diff across wheat bridge
     float PotDiff = getPotDiffWheat();
+    int resistance = (680 * PotDiff + 1122) / (1.65 - PotDiff); // Convert voltage to resistance using Wheatstone bridge formula
 
     // Get internal noise data
     int32_t ElectretData = getElectretWave();
@@ -123,20 +135,20 @@ void loop() {
     }
 
     // Prepare the data string to send
-    String dataString = ">";
+    String dataString = "";
 
-    dataString += String(mic) + ", ";
-    dataString += String(intmic) + ", ";
-    dataString += String(acceleration) + ", ";
-    dataString += String(PotDiff) + ", ";
+    dataString += String(mic) + ",";
+    dataString += String(ElectretData) + ",";
+    dataString += String(acceleration) + ",";
+    dataString += String(resistance) + "," +"\n";
 
     // Send data via Serial Monitor
     Serial.println(dataString);
 
     // Send data via BLE UART if connected
     if (bleuart.notifyEnabled()) {
-      bleuart.print(dataString);
-      bleuart.println();
+      sendBLEData(dataString);
+      delay(10); // Small delay to ensure data is sent properly
     }
 }
 
@@ -284,4 +296,30 @@ int32_t getElectretWave() {
     }
     peakToPeak = signalMax - signalMin;
     return peakToPeak;
+}
+
+void sendBLEData(const String& data) {
+    const int chunkSize = 20;  // BLE chunk size limit
+    int dataLength = data.length();
+    int position = 0;
+
+    while (position < dataLength) {
+        // Calculate remaining bytes and chunk length
+        int remaining = dataLength - position;
+        int currentChunkSize = (remaining > chunkSize) ? chunkSize : remaining;
+        
+        // Extract substring for this chunk
+        String chunk = data.substring(position, position + currentChunkSize);
+        
+        // Send chunk
+        bleuart.print(chunk);
+        
+        // Move to next position
+        position += currentChunkSize;
+        
+        // Small delay between chunks to prevent data loss
+        delay(5);
+    }
+    bleuart.println();   // Send newline to indicate end of data
+    delay(10);  // Small delay to ensure data is sent properly
 }
