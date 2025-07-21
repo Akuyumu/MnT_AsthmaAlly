@@ -7,7 +7,6 @@
 #include <bluefruit.h> //BLE nRF library
 #include <Adafruit_LittleFS.h>
 #include <InternalFileSystem.h>
-#include <DFRobot_MICS.h> // Gas Sensor library
 
 
 #define VBATPIN A6 // Battery voltage analog pin
@@ -52,6 +51,7 @@ int beatAvg;
 float getBattVoltage(int x);
 void VBatIndicator();
 void FillSensorBuffer(int32_t samplesize);
+void sendBLEData(const String& dataString);
 
 // Initialize NeoPixel
 Adafruit_NeoPixel pixel = Adafruit_NeoPixel(NUMPIXELS, NEOPIXELPIN, NEO_GRB + NEO_KHZ800);
@@ -98,13 +98,22 @@ void setup() {
   //Initialize BLE
   Bluefruit.begin();
   Bluefruit.setName("AsthmaAlly-Wrist");
-  bleuart.begin();
+      Bluefruit.setTxPower(-4);    // Increase power for better range, adjust as needed
 
-  //Start Advertising
-  Bluefruit.Advertising.addName();
-  Bluefruit.Advertising.addService(bleuart);
-  Bluefruit.Advertising.start();
-  Bluefruit.configPrphBandwidth(BANDWIDTH_MAX); // Request larger MTU size
+    // Configure BLE UART service
+    bleuart.setPermission(SECMODE_OPEN, SECMODE_OPEN);
+    bleuart.begin();
+
+    // Start Advertising
+    Bluefruit.Advertising.addFlags(BLE_GAP_ADV_FLAGS_LE_ONLY_GENERAL_DISC_MODE);
+    Bluefruit.Advertising.addName();
+    Bluefruit.Advertising.addService(bleuart);
+
+// Set advertising parameters
+    Bluefruit.Advertising.restartOnDisconnect(true);
+    Bluefruit.Advertising.setInterval(32, 244);    // in unit of 0.625 ms
+    Bluefruit.Advertising.setFastTimeout(30);      // number of seconds in fast mode
+    Bluefruit.Advertising.start();                // 0 = Don't stop advertising after n seconds
 }
 
 void loop() {
@@ -155,7 +164,8 @@ void loop() {
 
     // Send data via BLE UART if connected
     if (bleuart.notifyEnabled()) {
-      bleuart.println(dataString);
+      sendBLEData(dataString);
+      delay(10); // Small delay to ensure data is sent properly
     }
 
     if (validSPO2 == 1 && spo2 < 92 && particleSensor.getIR() > 5000) {
@@ -208,4 +218,29 @@ void FillSensorBuffer(int32_t samplesize) {
           Serial.println("]");
         }
       }
+}
+void sendBLEData(const String& data) {
+    const int chunkSize = 20;  // BLE chunk size limit
+    int dataLength = data.length();
+    int position = 0;
+
+    while (position < dataLength) {
+        // Calculate remaining bytes and chunk length
+        int remaining = dataLength - position;
+        int currentChunkSize = (remaining > chunkSize) ? chunkSize : remaining;
+        
+        // Extract substring for this chunk
+        String chunk = data.substring(position, position + currentChunkSize);
+        
+        // Send chunk
+        bleuart.print(chunk);
+        
+        // Move to next position
+        position += currentChunkSize;
+        
+        // Small delay between chunks to prevent data loss
+        delay(5);
+    }
+    bleuart.println();   // Send newline to indicate end of data
+    delay(10);  // Small delay to ensure data is sent properly
 }
