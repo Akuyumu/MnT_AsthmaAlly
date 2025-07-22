@@ -149,14 +149,14 @@ void loop() {
     }   
 
     // Prepare the data string to send
-    String dataString = ">";
+    String dataString = "";
     
     if (validHeartRate == 1 && particleSensor.getIR() > 5000) {
-      dataString += "Heart:" + String(beatAvg) + ", ";
+      dataString += String(beatAvg) + ",";
     }
 
     if (validSPO2 == 1 && particleSensor.getIR() > 5000) {
-      dataString += "SpO2:" + String(spo2) + ", ";
+      dataString += String(spo2) + "," + "\n";
     }
 
     // Send data via Serial Monitor
