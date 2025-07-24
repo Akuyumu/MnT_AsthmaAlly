@@ -1,10 +1,10 @@
 #include <Arduino.h>
 #include <Adafruit_NeoPixel.h> // NeoPixel LED library
 #include "Adafruit_TinyUSB.h" 
-#include <PDM.h>
-#include <Adafruit_LSM6DS33.h>
+#include <PDM.h> // PDM microphone library
+#include <Adafruit_LSM6DS33.h> // Accelerometer library
 #include <bluefruit.h> //BLE nRF library
-#include <Adafruit_LittleFS.h>
+#include <Adafruit_LittleFS.h> 
 #include <InternalFileSystem.h>
 
 #define VBATPIN A6 // Battery voltage analog pin
@@ -14,10 +14,12 @@
 #define WHEATBRIDGEPIN_B A4
 #define ELECTRETPIN A5
 
+
 // Put variable declaration here
 float VBat; // Voltage of battery
 int32_t mic; 
 int32_t intmic; 
+int frequency;
 
 extern PDMClass PDM;
 short PDMsampleBuffer[256];  // buffer to read PDMsamples into, each sample is 16-bits
@@ -92,11 +94,11 @@ void setup() {
     Bluefruit.begin();
     Bluefruit.setName("AsthmaAlly-Chest");
     Bluefruit.setTxPower(-4);    // Increase power for better range, adjust as needed
-
+    
     // Configure BLE UART service
     bleuart.setPermission(SECMODE_OPEN, SECMODE_OPEN);
     bleuart.begin();
-
+    
     // Start Advertising
     Bluefruit.Advertising.addFlags(BLE_GAP_ADV_FLAGS_LE_ONLY_GENERAL_DISC_MODE);
     Bluefruit.Advertising.addName();
@@ -104,7 +106,6 @@ void setup() {
 
 // Set advertising parameters
     Bluefruit.Advertising.restartOnDisconnect(true);
-    Bluefruit.Advertising.setInterval(32, 244);    // in unit of 0.625 ms
     Bluefruit.Advertising.setFastTimeout(30);      // number of seconds in fast mode
     Bluefruit.Advertising.start();                // 0 = Don't stop advertising after n seconds
 }
@@ -129,25 +130,28 @@ void loop() {
 
     // Get internal noise data
     int32_t ElectretData = getElectretWave();
-    if (ElectretData < 30) // filter noises too loud to be internal sounds
+    /*
+    if (ElectretData < 30000) // filter noises too loud to be internal sounds
     {
       intmic = ElectretData;
+      frequency = getDominantFrequency(); // Get dominant frequency from the electret data
     }
+    */
 
     // Prepare the data string to send
     String dataString = "";
 
     dataString += String(mic) + ",";
-    dataString += String(ElectretData) + ",";
     dataString += String(acceleration) + ",";
-    dataString += String(resistance) + "," +"\n";
+    dataString += String(ElectretData) + ",";
+    dataString += String(resistance) + "," + "\n";
 
     // Send data via Serial Monitor
-    Serial.println(dataString);
+    Serial.print(dataString);
 
     // Send data via BLE UART if connected
     if (bleuart.notifyEnabled()) {
-      sendBLEData(dataString);
+      bleuart.print(dataString);
       delay(10); // Small delay to ensure data is sent properly
     }
 }
@@ -273,7 +277,45 @@ float getPotDiffWheat() { // calculate the potential difference across two point
 }
 
 int32_t getElectretWave() {
-    const int sampleWindow = 50;  // Sample window width in mS (50 mS = 20Hz)
+    const int SAMPLES = 256;        // Match PDM sample size
+    const int16_t AMPLITUDE_THRESHOLD = 5;  // Adjust threshold based on testing
+    uint16_t max_amplitude = 0;
+    uint16_t min_amplitude = 1023;
+    long sum = 0;
+    int count = 0;
+    
+    // Take samples in a tight loop
+    for(int i = 0; i < SAMPLES; i++) {
+        uint16_t sample = analogRead(ELECTRETPIN);
+        
+        // Only process samples above noise threshold and below max ADC value
+        if (sample < 1024 && abs(sample - 512) > AMPLITUDE_THRESHOLD) {
+            // Track min/max for peak-to-peak calculation
+            if (sample > max_amplitude) {
+                max_amplitude = sample;
+            }
+            if (sample < min_amplitude) {
+                min_amplitude = sample;
+            }
+            
+            // Add to sum for potential RMS calculation
+            sum += (long)sample * sample;
+            count++;
+        }
+        
+        // Small delay to maintain consistent sampling rate
+        delayMicroseconds(100);  // 10kHz sampling rate
+    }
+
+    // Calculate peak-to-peak amplitude
+    int32_t peak_to_peak = max_amplitude - min_amplitude;
+    
+    return peak_to_peak;
+}
+
+/*
+int32_t getElectretWave() {
+    const int sampleWindow = 30;  // Sample window width in mS (50 mS = 20Hz)
     unsigned int sample;
     unsigned long startMillis = millis(); // Start of sample window
     unsigned int peakToPeak = 0;   // peak-to-peak level
@@ -297,6 +339,7 @@ int32_t getElectretWave() {
     peakToPeak = signalMax - signalMin;
     return peakToPeak;
 }
+*/
 
 void sendBLEData(const String& data) {
     const int chunkSize = 20;  // BLE chunk size limit
@@ -321,5 +364,4 @@ void sendBLEData(const String& data) {
         delay(5);
     }
     bleuart.println();   // Send newline to indicate end of data
-    delay(10);  // Small delay to ensure data is sent properly
 }
