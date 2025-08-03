@@ -15,7 +15,7 @@ from sklearn.metrics import (
 import json
 
 # load synthetic data
-df = pd.read_csv("C:\\Users\\User\\synthetic_asthma_data.csv")
+df = pd.read_csv("C:/Users/User/synthetic_asthma_data.csv")
 
 # create early warning label (exacerbation in next 3 days)
 # rolling max of 'exacerbation' over 4 days (today + next 3), shifted to today

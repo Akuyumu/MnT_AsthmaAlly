@@ -86,9 +86,9 @@ void setup() {
   // Initialize MAX30102
   particleSensor.begin(Wire, I2C_SPEED_FAST);
 
-  byte ledBrightness = 20; //Options: 0=Off to 255=50mA
+  byte ledBrightness = 255; //Options: 0=Off to 255=50mA
   byte sampleAverage = 8; //Options: 1, 2, 4, 8, 16, 32
-  byte ledMode = 3; //Options: 1 = Red only, 2 = Red + IR, 3 = Red + IR + Green
+  byte ledMode = 2; //Options: 1 = Red only, 2 = Red + IR, 3 = Red + IR + Green
   int sampleRate = 400; //Options: 50, 100, 200, 400, 800, 1000, 1600, 3200
   int pulseWidth = 411; //Options: 69, 118, 215, 411
   int adcRange = 16384; //Options: 2048, 4096, 8192, 16384
@@ -152,7 +152,7 @@ void loop() {
     String dataString = "";
     
     if (validHeartRate == 1 && particleSensor.getIR() > 5000) {
-      dataString += String(beatAvg) + ",";
+      dataString += String(beatAvg-15) + ",";
     }
 
     if (validSPO2 == 1 && particleSensor.getIR() > 5000) {

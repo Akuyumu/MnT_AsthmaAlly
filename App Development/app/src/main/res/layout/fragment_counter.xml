@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/layoutCounter"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:gravity="center"
+    android:padding="24dp">
+    
+    <Button
+        android:id="@+id/btnAttack"
+        android:layout_width="300dp"
+        android:layout_height="300dp"
+        android:background="@drawable/circle_red"
+        android:text="Asthma\nAttack"
+        android:textColor="#FFFFFF"
+        android:textStyle="bold"
+        android:textSize="18sp"
+        android:gravity="center"
+        android:elevation="6dp"  />
+
+    <TextView
+        android:id="@+id/txtAttackCount"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="32dp"
+        android:text="Number of asthma attacks this week: 0"
+        android:textSize="18sp" />
+
+
+    <Button
+        android:id="@+id/btnInhaler"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Inhaler Used"
+        android:layout_marginTop="32dp"/>
+
+
+    <TextView
+        android:id="@+id/txtInhalerCount"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Number of inhaler uses this week: 0"
+        android:layout_marginTop="15dp"/>
+</LinearLayout>

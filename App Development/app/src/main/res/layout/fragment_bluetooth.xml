@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:orientation="vertical"
+    android:padding="16dp"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+
+
+
+
+    <Button
+        android:id="@+id/btnConnect"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Bluetooth" />
+
+    <TextView
+        android:id="@+id/txtSpO2"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="SpO2: --"
+        android:textSize="18sp" />
+
+    <TextView
+        android:id="@+id/txtRespiration"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Respiration: --"
+        android:textSize="18sp" />
+
+    <TextView
+        android:id="@+id/txtData"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:textSize="14sp"
+        android:scrollbars="vertical"
+        android:maxLines="4"
+        android:ellipsize="end"
+        />
+
+
+    <TextView
+        android:id="@+id/txtBreathingLabel"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Breathing:"
+        android:textSize="16sp"
+        android:layout_marginTop="16dp"
+        android:layout_marginBottom="4dp"
+        />
+
+
+    <com.github.mikephil.charting.charts.LineChart
+        android:id="@+id/chartBreathe"
+        android:layout_width="match_parent"
+        android:layout_height="300dp" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Time"
+        android:layout_gravity="center_horizontal"
+        android:padding="4dp"/>
+
+
+</LinearLayout>
