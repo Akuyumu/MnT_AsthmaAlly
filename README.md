@@ -1,4 +1,4 @@
-# Welcome to the documentation for my NTU SPMS Making & Tinkering Project: AsthmaAlly
+# NTU SPMS Making & Tinkering Project: AsthmaAlly
 
 The aim of this project is to create a wearable sensor system that can monitor various bio-indicators, analyse the data with Machine Learning an accompanying Android application to provide the patient and their caretakers early warnings of an incoming asthma attack.
 
